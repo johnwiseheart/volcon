@@ -103,12 +103,12 @@ class VolumeControlClient {
   }
 }
 
-// const client = new VolumeControlClient(
-//   "ws://volcon.dynamic.jcaw.me:3000",
-//   "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
-// );
-
 const client = new VolumeControlClient(
-  "ws://127.0.0.1:3000",
+  "wss://volcon.dynamic.jcaw.me:443",
   "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
 );
+
+// const client = new VolumeControlClient(
+//   "ws://127.0.0.1:3000",
+//   "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
+// );

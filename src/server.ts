@@ -109,6 +109,10 @@ class VolumeControlServer {
     });
   }
 
+  private isValidDeviceId = (deviceId) => {
+    return Object.keys(this.connectedDevices).indexOf(deviceId) > -1;
+  }
+
   private handleDevicesRequest = (
     req: express.Request,
     res: express.Response,
@@ -130,6 +134,10 @@ class VolumeControlServer {
     req: express.Request,
     res: express.Response,
   ) => {
+    if (!this.isValidDeviceId(req.body.deviceId)) {
+      res.send(generateApiErrorResponse("Invalid device ID"));
+    }
+
     if (api.isRequestAdjustVolumeRequest(req.body)) {
       const { deviceId, volumeDelta } = req.body;
       const messageId = uuid4();
@@ -143,10 +151,11 @@ class VolumeControlServer {
     }
   }
 
-  private handleSetVolumeRequest = (
-    req: express.Request,
-    res: express.Response,
-  ) => {
+  private handleSetVolumeRequest = (req: express.Request, res: express.Response) => {
+    if (!this.isValidDeviceId(req.body.deviceId)) {
+      res.send(generateApiErrorResponse("Invalid device ID"));
+    }
+
     if (api.isRequestSetVolumeRequest(req.body)) {
       const { deviceId, volume } = req.body;
       const messageId = uuid4();
@@ -161,6 +170,10 @@ class VolumeControlServer {
   }
 
   private handleMuteRequest = (req: express.Request, res: express.Response) => {
+    if (!this.isValidDeviceId(req.body.deviceId)) {
+      res.send(generateApiErrorResponse("Invalid device ID"));
+    }
+
     if (api.isRequestSetMuteRequest(req.body)) {
       const { deviceId, isMuted } = req.body;
       const messageId = uuid4();

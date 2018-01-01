@@ -133,7 +133,7 @@ class VolumeControlServer {
     if (api.isRequestAdjustVolumeRequest(req.body)) {
       const { deviceId, volumeDelta } = req.body;
       const messageId = uuid4();
-      this.sendMessage(this.connectedDevices[deviceId], {
+      this.sendMessage(deviceId, {
         deviceId,
         messageId,
         type: websocket.MessageType.ADJUST_VOLUME,
@@ -150,7 +150,7 @@ class VolumeControlServer {
     if (api.isRequestSetVolumeRequest(req.body)) {
       const { deviceId, volume } = req.body;
       const messageId = uuid4();
-      this.sendMessage(this.connectedDevices[deviceId], {
+      this.sendMessage(deviceId, {
         deviceId,
         messageId,
         type: websocket.MessageType.SET_VOLUME,
@@ -164,7 +164,7 @@ class VolumeControlServer {
     if (api.isRequestSetMuteRequest(req.body)) {
       const { deviceId, isMuted } = req.body;
       const messageId = uuid4();
-      this.sendMessage(this.connectedDevices[deviceId], {
+      this.sendMessage(deviceId, {
         deviceId,
         isMuted,
         messageId,
@@ -192,8 +192,13 @@ class VolumeControlServer {
     }
   }
 
-  private sendMessage = (ws: WebSocket, data: websocket.Message) => {
-    ws.send(JSON.stringify(data));
+  private sendMessage = (deviceId: string, data: websocket.Message) => {
+    const ws = this.connectedDevices[deviceId];
+    if (ws.readyState !== ws.CLOSED) {
+      ws.send(JSON.stringify(data));
+    } else {
+      delete this.connectedDevices[deviceId];
+    }
   }
 }
 

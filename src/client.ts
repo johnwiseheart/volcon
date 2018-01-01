@@ -21,6 +21,7 @@ class VolumeControlClient {
     ws.on("message", (json: string) => this.handleMessage(ws, json));
 
     this.deviceId = deviceId || uuid4();
+    console.log("Starting with device ID: %s connected to %s ", this.deviceId, websocketURI);
   }
 
   private handleOpen = (ws: WebSocket) => {
@@ -49,6 +50,7 @@ class VolumeControlClient {
     ws: WebSocket,
     message: websocket.IAdjustVolumeMessage,
   ) => {
+    console.log("Volume2");
     this.volume = this.computeNewVolume(message.volumeDelta);
     this.sendMessage(ws, {
       deviceId: this.deviceId,
@@ -63,6 +65,7 @@ class VolumeControlClient {
     ws: WebSocket,
     message: websocket.ISetVolumeMessage,
   ) => {
+    console.log("Volume");
     this.volume = message.volume;
     this.sendMessage(ws, {
       deviceId: this.deviceId,
@@ -77,6 +80,7 @@ class VolumeControlClient {
     ws: WebSocket,
     message: websocket.ISetMuteMessage,
   ) => {
+    console.log("Muted");
     this.isMuted = message.isMuted;
     this.sendMessage(ws, {
       deviceId: this.deviceId,
@@ -103,12 +107,11 @@ class VolumeControlClient {
   }
 }
 
+const client = new VolumeControlClient(
+  "wss://volcon.dynamic.jcaw.me:443",
+);
+
 // const client = new VolumeControlClient(
-//   "wss://volcon.dynamic.jcaw.me:443",
+//   "ws://127.0.0.1:3000",
 //   "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
 // );
-
-const client = new VolumeControlClient(
-  "ws://127.0.0.1:3000",
-  "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
-);

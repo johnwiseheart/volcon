@@ -1,63 +1,9 @@
 "use strict";
 
 var https = require("https");
+const fetch = require('node-fetch');
 
-/**
- * This sample demonstrates a smart home skill using the publicly available API on Amazon's Alexa platform.
- * For more information about developing smart home skills, see
- *  https://developer.amazon.com/alexa/smart-home
- *
- * For details on the smart home API, please visit
- *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference
- */
-
-/**
- * Mock data for devices to be discovered
- *
- * For more information on the discovered appliance response please see
- *  https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discoverappliancesresponse
- */
-const USER_DEVICES = [
-  {
-    endpointId: "4b8c20fc-36a7-4ac0-8c6f-6699d701e87b",
-    friendlyName: "Volcon Volume Control",
-    description: "Volcon Volume Control",
-    manufacturerName: "John Wiseheart",
-    displayCategories: ["SPEAKER"],
-    cookie: {},
-    capabilities: [
-      {
-        type: "AlexaInterface",
-        interface: "Alexa",
-        version: "3"
-      },
-      {
-        type: "AlexaInterface",
-        interface: "Alexa.Speaker",
-        version: "3",
-        properties: {
-          supported: [
-            {
-              name: "volume"
-            },
-            {
-              name: "muted"
-            }
-          ],
-          retrievable: true
-        }
-      }
-    ]
-  }
-];
-
-/**
- * Utility functions
- */
-
-function log(title, msg) {
-  console.log(`[${title}] ${msg}`);
-}
+const log = console.log;
 
 /**
  * Generate a unique message ID
@@ -76,7 +22,7 @@ function generateMessageID() {
  * @returns {Object} Response object
  */
 
-function generateGenericResponse(name, payload) {
+function generateGenericResponse(name, deviceId, payload) {
   return {
     event: {
       header: {
@@ -91,7 +37,7 @@ function generateGenericResponse(name, payload) {
   };
 }
 
-function generateResponse(name, volume, isMuted) {
+function generateResponse(name, deviceId, volume, isMuted) {
   return {
     context: {
       properties: [
@@ -125,22 +71,6 @@ function generateResponse(name, volume, isMuted) {
 }
 
 /**
- * Mock functions to access device cloud.
- *
- * TODO: Pass a user access token and call cloud APIs in production.
- */
-
-function getDevicesFromPartnerCloud() {
-  /**
-   * For the purposes of this sample code, we will return:
-   * (1) Non-dimmable light bulb
-   * (2) Dimmable light bulb
-   */
-
-  return USER_DEVICES;
-}
-
-/**
  * Main logic
  */
 
@@ -164,44 +94,28 @@ function handleDiscovery(request, callback) {
    */
   const userAccessToken = request.directive.payload.scope.token.trim();
 
-  var request = new https.request(
-    {
-      host: "volcon.dynamic.jcaw.me",
-      port: "443",
-      path: "/devices",
-      method: "GET"
-    },
-    res => {
-      res.setEncoding("utf8");
-      res.on("data", function(body) {
-        const content = JSON.parse(body);
-        const response = {
-          event: {
-            header: {
-              messageId: generateMessageID(),
-              name: "Discover.Response",
-              namespace: "Alexa.Discovery",
-              payloadVersion: "3"
-            },
-            payload: {
-              endpoints: content.payload.devices
-            }
+  fetch("https://volcon.dynamic.jcaw.me/devices")
+    .then((resp) => {
+      console.log("Resp", resp)
+      const json = JSON.parse(resp);
+      console.log("JSON", json)
+      const response = {
+        event: {
+          header: {
+            messageId: generateMessageID(),
+            name: "Discover.Response",
+            namespace: "Alexa.Discovery",
+            payloadVersion: "3"
+          },
+          payload: {
+            endpoints: json.payload.devices
           }
-        };
+        }
+      };
 
-        /**
-         * Log the response. These messages will be stored in CloudWatch.
-         */
-        log("DEBUG", `Discovery Response: ${JSON.stringify(response)}`);
-
-        /**
-         * Return result with successful message.
-         */
-        callback(null, response);
-      });
-    }
-  );
-  request.end();
+      log("DEBUG", `Discovery Response: ${JSON.stringify(response)}`);
+      callback(null, response);
+    });
 }
 
 function handleSpeaker(request, callback) {
@@ -211,15 +125,6 @@ function handleSpeaker(request, callback) {
   switch (request.directive.header.name) {
     case "SetVolume":
       volume = request.directive.payload.volume;
-      if (!volume) {
-        const payload = { faultingParameter: `volume: ${volume}` };
-        callback(
-          null,
-          generateGenericResponse("UnexpectedInformationReceivedError", payload)
-        );
-        return;
-      }
-
       var body = JSON.stringify({
         deviceId: "d1b6ce9b-601f-4f80-8a04-5a0b1ed6c22f",
         volume
@@ -256,15 +161,6 @@ function handleSpeaker(request, callback) {
       break;
     case "AdjustVolume":
       volume = request.payload.volume;
-      if (!volume) {
-        const payload = { faultingParameter: `volume: ${volume}` };
-        callback(
-          null,
-          generateGenericResponse("UnexpectedInformationReceivedError", payload)
-        );
-        return;
-      }
-
       var body = JSON.stringify({
         deviceId: "25c94278-4b6e-4f71-b300-48b16cfaddcf",
         volumeDelta: volume
@@ -301,15 +197,6 @@ function handleSpeaker(request, callback) {
       break;
     case "SetMute":
       const mute = request.payload.mute;
-      if (mute === undefined) {
-        const payload = { faultingParameter: `mute: ${mute}` };
-        callback(
-          null,
-          generateGenericResponse("UnexpectedInformationReceivedError", payload)
-        );
-        return;
-      }
-
       var body = JSON.stringify({
         deviceId: "9af0818d-deb6-4807-a71d-fa66c434a96b",
         isMuted: mute

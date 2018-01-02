@@ -80,7 +80,7 @@ class VolumeControlServer {
   constructor(port = 3000) {
     const app = express();
     app.use(bodyParser.json());
-    app.post("/*", setJSONHeader);
+    app.all("/*", setJSONHeader);
     app.get("/ping", (req: express.Request, res: express.Response) => {
       res.send("Ping");
     });

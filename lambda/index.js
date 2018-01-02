@@ -22,37 +22,22 @@ function generateMessageID() {
  * @returns {Object} Response object
  */
 
-function generateGenericResponse(name, deviceId, payload) {
-  return {
-    event: {
-      header: {
-        messageId: generateMessageID(),
-        name: name,
-        namespace: "Alexa.Speaker",
-        payloadVersion: "3"
-      },
-      endpoint: "appliance-001",
-      payload: payload
-    }
-  };
-}
-
-function generateResponse(name, deviceId, volume, isMuted) {
+function generateResponse(name, payload) {
   return {
     context: {
       properties: [
         {
           namespace: "Alexa.Speaker",
           name: "volume",
-          value: volume,
-          timeOfSample: "2017-02-03T16:20:50.52Z",
+          value: payload.volume,
+          timeOfSample: new Date().toISOString(),
           uncertaintyInMilliseconds: 0
         },
         {
           namespace: "Alexa.Speaker",
           name: "muted",
-          value: isMuted,
-          timeOfSample: "2017-02-03T16:20:50.52Z",
+          value: payload.isMuted,
+          timeOfSample: new Date().toISOString(),
           uncertaintyInMilliseconds: 0
         }
       ]
@@ -64,28 +49,12 @@ function generateResponse(name, deviceId, volume, isMuted) {
         namespace: "Alexa.Speaker",
         payloadVersion: "3"
       },
-      endpoint: "appliance-001",
+      endpoint: payload.deviceId,
       payload: {}
     }
   };
 }
 
-/**
- * Main logic
- */
-
-/**
- * This function is invoked when we receive a "Discovery" message from Alexa Smart Home Skill.
- * We are expected to respond back with a list of appliances that we have discovered for a given customer.
- *
- * @param {Object} request - The full request object from the Alexa smart home service. This represents a DiscoverAppliancesRequest.
- *     https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discoverappliancesrequest
- *
- * @param {function} callback - The callback object on which to succeed or fail the response.
- *     https://docs.aws.amazon.com/lambda/latest/dg/nodejs-prog-model-handler.html#nodejs-prog-model-handler-callback
- *     If successful, return <DiscoverAppliancesResponse>.
- *     https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/smart-home-skill-api-reference#discoverappliancesresponse
- */
 function handleDiscovery(request, callback) {
   log("DEBUG", `Discovery Request: ${JSON.stringify(request.directive)}`);
 
@@ -95,10 +64,8 @@ function handleDiscovery(request, callback) {
   const userAccessToken = request.directive.payload.scope.token.trim();
 
   fetch("https://volcon.dynamic.jcaw.me/devices")
-    .then((resp) => {
-      console.log("Resp", resp)
-      const json = JSON.parse(resp);
-      console.log("JSON", json)
+    .then((resp) => resp.json())
+    .then((json) => {
       const response = {
         event: {
           header: {
@@ -125,39 +92,25 @@ function handleSpeaker(request, callback) {
   switch (request.directive.header.name) {
     case "SetVolume":
       volume = request.directive.payload.volume;
-      var body = JSON.stringify({
-        deviceId: "d1b6ce9b-601f-4f80-8a04-5a0b1ed6c22f",
-        volume
-      });
 
-      var request = new https.request(
-        {
-          host: "volcon.dynamic.jcaw.me",
-          port: "443",
-          path: "/setVolume",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(body)
-          }
-        },
-        res => {
-          res.setEncoding("utf8");
-          res.on("data", function(body) {
-            console.log("AAA", body);
-            const content = JSON.parse(body);
+      fetch("https://volcon.dynamic.jcaw.me/setVolume", {
+        method: "POST",
+        body: JSON.stringify({
+          deviceId: "d1b6ce9b-601f-4f80-8a04-5a0b1ed6c22f",
+          volume
+        })
+      })
+        .then((resp) => resp.json())
+        .then((json) => {
+          console.log("AAA", body);
             callback(
               null,
               generateResponse(
                 "VolumeChanged",
-                content.payload.volume,
-                content.payload.isMuted
+                json.payload
               )
-            );
-          });
-        }
-      );
-      request.end(body);
+            )
+        });
       break;
     case "AdjustVolume":
       volume = request.payload.volume;
@@ -166,34 +119,23 @@ function handleSpeaker(request, callback) {
         volumeDelta: volume
       });
 
-      var request = new https.request(
-        {
-          host: "volcon.dynamic.jcaw.me",
-          port: "443",
-          path: "/adjustVolume",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(body)
-          }
-        },
-        res => {
-          res.setEncoding("utf8");
-          res.on("data", function(body) {
-            console.log("AAA", body);
-            const content = JSON.parse(body);
+      fetch("https://volcon.dynamic.jcaw.me/adjustVolume", {
+        method: "POST",
+        body: JSON.stringify({
+          deviceId: "d1b6ce9b-601f-4f80-8a04-5a0b1ed6c22f",
+          volumeDelta: volume
+        })
+      })
+        .then((resp) => resp.json())
+        .then((json) => {
             callback(
               null,
               generateResponse(
                 "VolumeChanged",
-                content.payload.volume,
-                content.payload.isMuted
+                json.payload
               )
-            );
-          });
-        }
-      );
-      request.end(body);
+            )
+        });
       break;
     case "SetMute":
       const mute = request.payload.mute;
@@ -202,50 +144,27 @@ function handleSpeaker(request, callback) {
         isMuted: mute
       });
 
-      var request = new https.request(
-        {
-          host: "volcon.dynamic.jcaw.me",
-          port: "443",
-          path: "/setMute",
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(body)
-          }
-        },
-        res => {
-          res.setEncoding("utf8");
-          res.on("data", function(body) {
-            console.log("AAA", body);
-            const content = JSON.parse(body);
+      fetch("https://volcon.dynamic.jcaw.me/setMute", {
+        method: "POST",
+        body: JSON.stringify({
+          deviceId: "d1b6ce9b-601f-4f80-8a04-5a0b1ed6c22f",
+          volumeDelta: volume
+        })
+      })
+        .then((resp) => resp.json())
+        .then((json) => {
             callback(
               null,
               generateResponse(
                 "MuteChanged",
-                content.payload.volume,
-                content.payload.isMuted
+                json.payload
               )
-            );
-          });
-        }
-      );
-      request.end(body);
+            )
+        });
       break;
-    default: {
-      log("ERROR", `No supported directive name: ${request.directive.header.name}`);
-      callback(null, generateGenericResponse("UnsupportedOperationError", {}));
-      return;
-    }
   }
 }
 
-/**
- * Main entry point.
- * Incoming events from Alexa service through Smart Home API are all handled by this function.
- *
- * It is recommended to validate the request and response with Alexa Smart Home Skill API Validation package.
- *  https://github.com/alexa/alexa-smarthome-validation
- */
 exports.handler = (request, context, callback) => {
   console.log(JSON.stringify(request));
   switch (request.directive.header.namespace) {
@@ -270,10 +189,5 @@ exports.handler = (request, context, callback) => {
         }
       });
       break;
-    default: {
-      const errorMessage = `No supported namespace: ${JSON.stringify(request)}`;
-      log("ERROR", errorMessage);
-      callback(new Error(errorMessage));
-    }
   }
 };

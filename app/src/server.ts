@@ -106,6 +106,21 @@ class VolumeControlServer {
     const wss = new WebSocket.Server({ server });
     wss.on("connection", (ws: WebSocket) => {
       ws.on("message", (json: string) => this.handleWebsocketMessage(ws, json));
+      let timerId: NodeJS.Timer;
+      const keepAlive = () => {
+          if (ws.readyState === ws.OPEN) {
+              ws.send("");
+          }
+          timerId = setTimeout(keepAlive, 20000);
+      };
+      const cancelKeepAlive = () => {
+          if (timerId) {
+              clearTimeout(timerId);
+          }
+      };
+
+      keepAlive();
+      ws.on("close", cancelKeepAlive);
     });
   }
 

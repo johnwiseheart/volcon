@@ -19,6 +19,7 @@ class VolumeControlClient {
     const ws = new WebSocket(websocketURI);
     ws.on("open", () => this.handleOpen(ws));
     ws.on("message", (json: string) => this.handleMessage(ws, json));
+    ws.on("close", () => console.log("Closed"));
 
     this.deviceId = deviceId || uuid4();
     console.log("Starting with device ID: %s connected to %s ", this.deviceId, websocketURI);

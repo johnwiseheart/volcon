@@ -4,7 +4,7 @@ RUN yarn add global gulp
 
 WORKDIR /app
 
-COPY . /app
+COPY app /app
 RUN yarn
 RUN yarn build
 
